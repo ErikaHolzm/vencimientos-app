@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { HttpError } from '../errors';
 import { asyncHandler, parse } from '../http';
 import { requireAuth } from '../middleware/auth';
-import type { ReminderRepo } from '../repositories/types';
+import type { ReminderRepo, UserRepo } from '../repositories/types';
 import { reminderSchema } from '../schemas';
 import type { Reminder } from '../types';
 
@@ -24,9 +24,9 @@ function idParam(value: string | undefined): string {
   return value;
 }
 
-export function remindersRouter(reminders: ReminderRepo, jwtSecret: string): Router {
+export function remindersRouter(reminders: ReminderRepo, users: UserRepo, jwtSecret: string): Router {
   const router = Router();
-  router.use(requireAuth(jwtSecret));
+  router.use(requireAuth(jwtSecret, users));
 
   // userId sale SIEMPRE del token verificado, nunca del cuerpo ni de la URL.
   const currentUser = (userId: string | undefined): string => {

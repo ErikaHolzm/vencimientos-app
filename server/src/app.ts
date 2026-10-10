@@ -50,8 +50,8 @@ export function createApp({ users, reminders, config }: AppDeps): Express {
     res.json({ status: 'ok' });
   });
 
-  app.use('/api/auth', authLimiter, authRouter(users, config));
-  app.use('/api/reminders', remindersRouter(reminders, config.jwtSecret));
+  app.use('/api/auth', authLimiter, authRouter(users, reminders, config));
+  app.use('/api/reminders', remindersRouter(reminders, users, config.jwtSecret));
 
   app.use(() => {
     throw new HttpError(404, 'Ruta no encontrada');

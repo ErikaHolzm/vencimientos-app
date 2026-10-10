@@ -1,6 +1,7 @@
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
+import { AccountScreen } from './screens/AccountScreen';
 import { AuthScreen } from './screens/AuthScreen';
 import { DetailScreen } from './screens/DetailScreen';
 import { FormScreen } from './screens/FormScreen';
@@ -12,6 +13,7 @@ export type RootStackParamList = {
   Auth: undefined;
   Home: undefined;
   Detail: { id: string };
+  Account: undefined;
   /** Sin id = recordatorio nuevo; con id = edición; con id y renew = renovación (nueva fecha). */
   Form: { id?: string; renew?: boolean } | undefined;
 };
@@ -38,6 +40,7 @@ export function Navigation() {
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Detail" component={DetailScreen} />
+            <Stack.Screen name="Account" component={AccountScreen} />
             <Stack.Screen name="Form" component={FormScreen} options={{ presentation: 'modal' }} />
           </>
         ) : (

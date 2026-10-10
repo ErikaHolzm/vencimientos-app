@@ -44,14 +44,24 @@ export function HomeScreen({ navigation }: Props) {
             <Text style={styles.today}>{formatToday()}</Text>
             <Text style={styles.title}>Vencimientos</Text>
           </View>
-          <Pressable
-            onPress={() => void logout()}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar sesión"
-            style={styles.logout}
-          >
-            <Feather name="log-out" size={20} color={colors.ink} />
-          </Pressable>
+          <View style={styles.actions}>
+            <Pressable
+              onPress={() => navigation.navigate('Account')}
+              accessibilityRole="button"
+              accessibilityLabel="Mi cuenta"
+              style={styles.logout}
+            >
+              <Feather name="user" size={20} color={colors.ink} />
+            </Pressable>
+            <Pressable
+              onPress={() => void logout()}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar sesión"
+              style={styles.logout}
+            >
+              <Feather name="log-out" size={20} color={colors.ink} />
+            </Pressable>
+          </View>
         </View>
 
         {error && isEmpty ? (
@@ -118,6 +128,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   today: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted },
   title: { fontFamily: fonts.extrabold, fontSize: 30, letterSpacing: -0.6, color: colors.ink, marginTop: 4 },
+  actions: { flexDirection: 'row', gap: 10 },
   logout: {
     width: 44,
     height: 44,

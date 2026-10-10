@@ -8,13 +8,23 @@ const email = z.string().trim().toLowerCase().email('Email inválido').max(254);
  * Todos los esquemas son .strict(): si llega un campo que no esperamos se rechaza.
  * Así nadie puede "colar" campos extra (mass assignment).
  */
-export const registerSchema = z
+// bcrypt solo usa los primeros 72 bytes: limitamos para no truncar en silencio.
+const newPassword = z.string().min(10, 'La contraseña debe tener al menos 10 caracteres').max(72, 'Máximo 72 caracteres');
+
+export const registerSchema = z.object({ email, password: newPassword }).strict();
+
+export const changePasswordSchema = z
   .object({
-    email,
-    // bcrypt solo usa los primeros 72 bytes: limitamos para no truncar en silencio.
-    password: z.string().min(10, 'La contraseña debe tener al menos 10 caracteres').max(72, 'Máximo 72 caracteres'),
+    currentPassword: z.string().min(1, 'Ingresá tu contraseña actual').max(128),
+    newPassword,
   })
-  .strict();
+  .strict()
+  .refine((d) => d.currentPassword !== d.newPassword, {
+    path: ['newPassword'],
+    message: 'La nueva contraseña debe ser distinta de la actual',
+  });
+
+export const deleteAccountSchema = z.object({ password: z.string().min(1, 'Ingresá tu contraseña').max(128) }).strict();
 
 export const loginSchema = z
   .object({

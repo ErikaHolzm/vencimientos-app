@@ -11,6 +11,14 @@ export const authApi = {
     request<AuthResponse>('/api/auth/login', { method: 'POST', body: { email, password } }),
   register: (email: string, password: string) =>
     request<AuthResponse>('/api/auth/register', { method: 'POST', body: { email, password } }),
+  /** Invalida el token en el servidor. */
+  logout: (token: string) => request<void>('/api/auth/logout', { method: 'POST', token }),
+  /** Cambia la contraseña; el servidor cierra las otras sesiones y devuelve un token nuevo. */
+  changePassword: (token: string, currentPassword: string, newPassword: string) =>
+    request<AuthResponse>('/api/auth/change-password', { method: 'POST', body: { currentPassword, newPassword }, token }),
+  /** Borra la cuenta y todos sus recordatorios. */
+  deleteAccount: (token: string, password: string) =>
+    request<void>('/api/auth/account', { method: 'DELETE', body: { password }, token }),
 };
 
 export const remindersApi = {

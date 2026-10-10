@@ -16,9 +16,36 @@ export class InMemoryUserRepo implements UserRepo {
 
   async create(data: { email: string; passwordHash: string }): Promise<User> {
     if (await this.findByEmail(data.email)) throw new DuplicateEmailError();
-    const user: User = { id: randomUUID(), email: data.email, passwordHash: data.passwordHash, createdAt: new Date() };
+    const user: User = {
+      id: randomUUID(),
+      email: data.email,
+      passwordHash: data.passwordHash,
+      tokenVersion: 0,
+      createdAt: new Date(),
+    };
     this.users.set(user.id, user);
     return user;
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return this.users.get(id) ?? null;
+  }
+
+  async revokeTokens(id: string): Promise<void> {
+    const user = this.users.get(id);
+    if (user) this.users.set(id, { ...user, tokenVersion: user.tokenVersion + 1 });
+  }
+
+  async changePassword(id: string, passwordHash: string): Promise<User | null> {
+    const user = this.users.get(id);
+    if (!user) return null;
+    const updated: User = { ...user, passwordHash, tokenVersion: user.tokenVersion + 1 };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async remove(id: string): Promise<boolean> {
+    return this.users.delete(id);
   }
 }
 
@@ -50,5 +77,16 @@ export class InMemoryReminderRepo implements ReminderRepo {
     const current = this.reminders.get(id);
     if (!current || current.userId !== userId) return false;
     return this.reminders.delete(id);
+  }
+
+  async removeAllByUser(userId: string): Promise<number> {
+    let removed = 0;
+    for (const [id, reminder] of this.reminders) {
+      if (reminder.userId === userId) {
+        this.reminders.delete(id);
+        removed++;
+      }
+    }
+    return removed;
   }
 }

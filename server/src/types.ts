@@ -5,6 +5,8 @@ export interface User {
   id: string;
   email: string;
   passwordHash: string;
+  /** Sube cada vez que se cierra sesión o se cambia la contraseña: invalida los tokens anteriores. */
+  tokenVersion: number;
   createdAt: Date;
 }
 

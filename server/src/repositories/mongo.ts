@@ -8,6 +8,7 @@ interface UserLean {
   _id: Types.ObjectId;
   email: string;
   passwordHash: string;
+  tokenVersion?: number; // las cuentas creadas antes de esta mejora no lo tienen
   createdAt: Date;
 }
 
@@ -26,6 +27,7 @@ const userSchema = new Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
@@ -56,7 +58,13 @@ function isDuplicateKeyError(err: unknown): boolean {
 }
 
 function toUser(d: UserLean): User {
-  return { id: d._id.toString(), email: d.email, passwordHash: d.passwordHash, createdAt: d.createdAt };
+  return {
+    id: d._id.toString(),
+    email: d.email,
+    passwordHash: d.passwordHash,
+    tokenVersion: d.tokenVersion ?? 0,
+    createdAt: d.createdAt,
+  };
 }
 
 function toReminder(d: ReminderLean): Reminder {
@@ -73,6 +81,33 @@ function toReminder(d: ReminderLean): Reminder {
 }
 
 export class MongoUserRepo implements UserRepo {
+  async findById(id: string): Promise<User | null> {
+    if (!OBJECT_ID.test(id)) return null;
+    const doc = (await UserModel.findById(new Types.ObjectId(id)).lean()) as unknown as UserLean | null;
+    return doc ? toUser(doc) : null;
+  }
+
+  async revokeTokens(id: string): Promise<void> {
+    if (!OBJECT_ID.test(id)) return;
+    await UserModel.updateOne({ _id: new Types.ObjectId(id) }, { $inc: { tokenVersion: 1 } });
+  }
+
+  async changePassword(id: string, passwordHash: string): Promise<User | null> {
+    if (!OBJECT_ID.test(id)) return null;
+    const doc = (await UserModel.findOneAndUpdate(
+      { _id: new Types.ObjectId(id) },
+      { $set: { passwordHash }, $inc: { tokenVersion: 1 } },
+      { new: true },
+    ).lean()) as unknown as UserLean | null;
+    return doc ? toUser(doc) : null;
+  }
+
+  async remove(id: string): Promise<boolean> {
+    if (!OBJECT_ID.test(id)) return false;
+    const res = await UserModel.deleteOne({ _id: new Types.ObjectId(id) });
+    return res.deletedCount === 1;
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     const doc = (await UserModel.findOne({ email }).lean()) as unknown as UserLean | null;
     return doc ? toUser(doc) : null;
@@ -120,5 +155,11 @@ export class MongoReminderRepo implements ReminderRepo {
       userId: new Types.ObjectId(userId),
     });
     return res.deletedCount === 1;
+  }
+
+  async removeAllByUser(userId: string): Promise<number> {
+    if (!OBJECT_ID.test(userId)) return 0;
+    const res = await ReminderModel.deleteMany({ userId: new Types.ObjectId(userId) });
+    return res.deletedCount;
   }
 }

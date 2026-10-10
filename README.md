@@ -14,6 +14,7 @@ Proyecto full stack hecho con TypeScript de punta a punta:
 
 - Registro e inicio de sesión (cada persona ve solo sus recordatorios).
 - Crear, editar y borrar recordatorios con categoría, fecha y avisos (30, 15, 7, 1 días antes o el mismo día).
+- Mi cuenta: cambiar la contraseña y eliminar la cuenta (con todos sus datos).
 - Renovar un vencimiento: la app propone una nueva fecha (un año más) que se puede ajustar, y los avisos se reprograman solos.
 - Pantalla principal con el próximo vencimiento, un resumen y filtros (urgentes, próximos, más adelante).
 - Estados por colores según cuánto falta: vencido, urgente (≤ 14 días), próximo (≤ 60 días), al día.
@@ -125,6 +126,9 @@ Todas las rutas de `/api/reminders` requieren el header `Authorization: Bearer <
 | --- | --- | --- |
 | POST | `/api/auth/register` | Crea la cuenta. Devuelve `{ token, user }` |
 | POST | `/api/auth/login` | Inicia sesión. Devuelve `{ token, user }` |
+| POST | `/api/auth/logout` | Cierra sesión: el token deja de servir (requiere token) |
+| POST | `/api/auth/change-password` | Cambia la contraseña con `{ currentPassword, newPassword }`; cierra las demás sesiones y devuelve un token nuevo |
+| DELETE | `/api/auth/account` | Elimina la cuenta y sus recordatorios; pide `{ password }` |
 | GET | `/api/reminders` | Lista los recordatorios del usuario, ordenados por fecha |
 | POST | `/api/reminders` | Crea un recordatorio |
 | PUT | `/api/reminders/:id` | Reemplaza un recordatorio |
@@ -149,6 +153,8 @@ Los errores tienen siempre la forma `{ "error": { "message": "...", "details": [
 - **Contraseñas** guardadas con hash bcrypt (nunca en texto). Largo mínimo de 10 y máximo de 72 caracteres (el límite de bcrypt, para no truncar en silencio).
 - **JWT** firmado con HS256, con el algoritmo fijado al verificar (se rechazan tokens `alg: none` o firmados con otro secreto) y con vencimiento.
 - **Sin enumeración de usuarios**: login responde igual si el email no existe o si la contraseña está mal, y tarda lo mismo en ambos casos.
+- **Sesiones revocables**: cada usuario tiene una versión de token que viaja dentro del JWT. Cerrar sesión o cambiar la contraseña la incrementa, así que los tokens anteriores dejan de funcionar aunque no hayan vencido (el servidor lo comprueba en cada pedido autenticado). Un token robado deja de servir al cambiar la contraseña.
+- **Acciones sensibles piden la contraseña**: cambiar la contraseña y eliminar la cuenta exigen la actual. Si es incorrecta responde 403 (no 401, para no confundirlo con "sesión vencida").
 - **Aislamiento entre usuarios**: el `userId` sale siempre del token, nunca del cuerpo ni de la URL. Pedir el recordatorio de otro usuario devuelve 404.
 - **Validación estricta** de toda entrada con zod (`.strict()` rechaza campos extra) y límite de 10 KB por petición.
 - **Inyección NoSQL**: filtros con tipos fijos, ids validados y `sanitizeFilter` activado en Mongoose.
@@ -162,7 +168,7 @@ Los errores tienen siempre la forma `{ "error": { "message": "...", "details": [
 - **Repositorios con interfaz**: las rutas dependen de `UserRepo` y `ReminderRepo`, no de MongoDB. Los tests de la API usan una versión en memoria (rápidos) y producción usa Mongoose. Para que esa réplica sea confiable, hay tests de contrato que corren las mismas pruebas contra las dos versiones, la segunda sobre un MongoDB real temporal (`mongodb-memory-server`): índice único de email, aislamiento entre usuarios, ids inválidos e intentos de inyección de operadores.
 - **Notificaciones locales** en lugar de push desde el servidor: las programa el propio sistema del teléfono, así que no necesitan conexión, ni que el servidor esté encendido, ni cuenta de desarrollador de Apple. Se reprograman cada vez que cambia la lista. iOS permite ~64 pendientes, por eso se programan las 60 más próximas. Límite: si creás un recordatorio desde otro dispositivo, este se entera (y programa el aviso) la próxima vez que abrís la app.
 - **Fechas como texto `AAAA-MM-DD`**: un vencimiento es un día de calendario, no un instante; así se evitan errores de zona horaria.
-- **Un solo token de sesión (7 días)**, sin refresh tokens. Alcanza para este alcance; ver mejoras.
+- **Un solo token de sesión (7 días)**, sin refresh tokens. La revocación se resuelve con la versión de token (un dato más en el usuario y una lectura por pedido); a cambio no hace falta una lista de tokens revocados.
 
 ## Pruebas de calidad
 
@@ -182,7 +188,8 @@ Límite conocido: como el rango se cuenta desde hoy, un recordatorio que lleva m
 
 ## Qué mejoraría después
 
-- Refresh tokens con rotación y cierre de sesión que revoque el token en el servidor.
+- Refresh tokens con rotación (hoy la sesión dura 7 días y se revoca en bloque).
+- Bloqueo temporal por cuenta tras varios intentos fallidos (hoy el límite es por IP) y rechazo de contraseñas comunes.
 - Notificaciones push desde el servidor (APNs/FCM) para sincronizar varios dispositivos.
 - Modo sin conexión con cola de cambios pendientes.
 - Tests de extremo a extremo de la app (Detox o Maestro).
