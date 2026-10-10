@@ -67,7 +67,7 @@ Después:
 
 ```bash
 npm run dev                 # API en http://localhost:4000
-npm test                    # tests (no necesitan MongoDB)
+npm test                    # tests (no tocan tu base de Atlas; la primera vez descargan un MongoDB temporal de ~100 MB)
 npm run typecheck           # revisión de tipos
 ```
 
@@ -136,7 +136,7 @@ Los errores tienen siempre la forma `{ "error": { "message": "...", "details": [
 
 ## Decisiones técnicas y límites conocidos
 
-- **Repositorios con interfaz**: las rutas dependen de `UserRepo` y `ReminderRepo`, no de MongoDB. Los tests usan una versión en memoria (rápidos, sin base de datos) y producción usa Mongoose.
+- **Repositorios con interfaz**: las rutas dependen de `UserRepo` y `ReminderRepo`, no de MongoDB. Los tests de la API usan una versión en memoria (rápidos) y producción usa Mongoose. Para que esa réplica sea confiable, hay tests de contrato que corren las mismas pruebas contra las dos versiones, la segunda sobre un MongoDB real temporal (`mongodb-memory-server`): índice único de email, aislamiento entre usuarios, ids inválidos e intentos de inyección de operadores.
 - **Notificaciones locales** en lugar de push desde el servidor: las programa el propio sistema del teléfono, así que no necesitan conexión, ni que el servidor esté encendido, ni cuenta de desarrollador de Apple. Se reprograman cada vez que cambia la lista. iOS permite ~64 pendientes, por eso se programan las 60 más próximas. Límite: si creás un recordatorio desde otro dispositivo, este se entera (y programa el aviso) la próxima vez que abrís la app.
 - **Fechas como texto `AAAA-MM-DD`**: un vencimiento es un día de calendario, no un instante; así se evitan errores de zona horaria.
 - **Un solo token de sesión (7 días)**, sin refresh tokens. Alcanza para este alcance; ver mejoras.
