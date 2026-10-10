@@ -1,9 +1,7 @@
-import * as SecureStore from 'expo-secure-store';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { authApi } from '../api';
 import { clearNotifications } from '../lib/notifications';
-
-const TOKEN_KEY = 'vencimientos.token';
+import { tokenStorage } from '../lib/storage';
 
 type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
 
@@ -17,13 +15,14 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
-/** Guarda la sesión. El token va en SecureStore (Keychain en iPhone), no en AsyncStorage. */
+/** Guarda la sesión. El token va en un almacén seguro (ver lib/storage.ts), no en almacenamiento común. */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    SecureStore.getItemAsync(TOKEN_KEY)
+    tokenStorage
+      .get()
       .then((saved) => {
         setToken(saved);
         setStatus(saved ? 'signedIn' : 'signedOut');
@@ -32,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const startSession = useCallback(async (newToken: string) => {
-    await SecureStore.setItemAsync(TOKEN_KEY, newToken);
+    await tokenStorage.set(newToken);
     setToken(newToken);
     setStatus('signedIn');
   }, []);
@@ -54,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
+    await tokenStorage.clear().catch(() => undefined);
     await clearNotifications().catch(() => undefined);
     setToken(null);
     setStatus('signedOut');

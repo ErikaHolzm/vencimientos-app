@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
@@ -8,6 +8,7 @@ import { DateField } from '../components/DateField';
 import { Field, SectionLabel } from '../components/Field';
 import { CATEGORIES, REMIND_OPTIONS } from '../categories';
 import { addDays, dueDateRange, suggestRenewalDate, toISO } from '../lib/dates';
+import { showMessage } from '../lib/dialogs';
 import type { RootStackParamList } from '../navigation';
 import { useReminders } from '../state/RemindersContext';
 import { colors, fonts } from '../theme';
@@ -52,7 +53,7 @@ export function FormScreen({ navigation, route }: Props) {
       else navigation.goBack();
     } catch (err) {
       setBusy(false);
-      Alert.alert('No se pudo guardar', err instanceof Error ? err.message : 'Probá de nuevo.');
+      showMessage('No se pudo guardar', err instanceof Error ? err.message : 'Probá de nuevo.');
     }
   };
 

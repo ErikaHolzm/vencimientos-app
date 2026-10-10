@@ -1,11 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { categoryInfo, remindLabel } from '../categories';
 import { addDays, daysUntil, formatDate, parseISO, startOfDay, toISO } from '../lib/dates';
+import { confirmDestructive, showMessage } from '../lib/dialogs';
 import { dueText, getStatus } from '../lib/status';
 import type { RootStackParamList } from '../navigation';
 import { useReminders } from '../state/RemindersContext';
@@ -47,15 +48,14 @@ export function DetailScreen({ navigation, route }: Props) {
       navigation.goBack();
     } catch (err) {
       setBusy(false);
-      Alert.alert('No se pudo eliminar', err instanceof Error ? err.message : 'Probá de nuevo.');
+      showMessage('No se pudo eliminar', err instanceof Error ? err.message : 'Probá de nuevo.');
     }
   };
 
-  const confirmDelete = () =>
-    Alert.alert('Eliminar recordatorio', 'Esta acción no se puede deshacer.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => void deleteReminder() },
-    ]);
+  const confirmDelete = async () => {
+    const confirmed = await confirmDestructive('Eliminar recordatorio', 'Esta acción no se puede deshacer.', 'Eliminar');
+    if (confirmed) await deleteReminder();
+  };
 
   return (
     <View style={styles.screen}>
@@ -116,7 +116,7 @@ export function DetailScreen({ navigation, route }: Props) {
           onPress={() => navigation.navigate('Form', { id: reminder.id, renew: true })}
           disabled={busy}
         />
-        <Button label="Eliminar recordatorio" variant="danger" onPress={confirmDelete} loading={busy} />
+        <Button label="Eliminar recordatorio" variant="danger" onPress={() => void confirmDelete()} loading={busy} />
       </View>
     </View>
   );

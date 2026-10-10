@@ -94,6 +94,29 @@ npm test
 npm run typecheck
 ```
 
+## Demo en línea (Vercel)
+
+La app también corre en el navegador (Expo para web) y la API se publica como función de Vercel, ambas desde este mismo repositorio. Son **dos proyectos de Vercel** que apuntan al mismo repo:
+
+| Proyecto | Root Directory | Cómo se construye | Variables de entorno |
+| --- | --- | --- | --- |
+| API | `server` | Vercel detecta `server/server.ts` (Express) sin configuración | `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGINS` (la URL de la web), `TRUST_PROXY=1` |
+| Web | `mobile` | `mobile/vercel.json` (`npx expo export -p web`, salida en `dist`) | `EXPO_PUBLIC_API_URL` (la URL de la API) |
+
+Para probarla localmente en el navegador: `cd mobile`, `npx expo install react-dom react-native-web @expo/metro-runtime` (una sola vez) y `npx expo start --web`.
+
+Diferencias de la versión web respecto al teléfono:
+
+- **Sin notificaciones**: las programa el sistema del teléfono y el navegador no puede hacerlo sin la pestaña abierta. Las funciones quedan desactivadas en la web.
+- **Sesión en `sessionStorage`**: el almacén seguro (Keychain) no existe en la web. El token se borra al cerrar la pestaña.
+- **Calendario del navegador** (`<input type="date">`) y diálogos del navegador para confirmar y avisar (`lib/dialogs.ts`).
+
+Notas de seguridad de la demo pública:
+
+- En Atlas hay que permitir el acceso desde cualquier IP (`0.0.0.0/0`), porque Vercel usa direcciones dinámicas. Por eso el usuario de base de datos tiene permisos solo de lectura y escritura sobre `vencimientos` (no administrador), una contraseña larga y aleatoria, y un `JWT_SECRET` propio de producción.
+- El límite de intentos guarda sus contadores en memoria de cada instancia. En una función serverless, con varias instancias, es una barrera parcial: para producción real haría falta un almacén compartido (Redis o Mongo) o el firewall de la plataforma.
+- El registro está abierto: cualquiera puede crear una cuenta en la demo.
+
 ## API
 
 Todas las rutas de `/api/reminders` requieren el header `Authorization: Bearer <token>`.
