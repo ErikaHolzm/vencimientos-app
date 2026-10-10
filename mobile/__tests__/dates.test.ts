@@ -1,4 +1,14 @@
-import { addDays, daysUntil, dueDateRange, formatDate, formatToday, parseISO, toISO } from '../src/lib/dates';
+import {
+  addDays,
+  addYears,
+  daysUntil,
+  dueDateRange,
+  formatDate,
+  formatToday,
+  parseISO,
+  suggestRenewalDate,
+  toISO,
+} from '../src/lib/dates';
 
 const NOW = new Date(2026, 9, 9, 19, 32); // viernes 9 de octubre de 2026, 19:32
 
@@ -32,6 +42,21 @@ describe('dates', () => {
     const { min, max } = dueDateRange(NOW);
     expect(toISO(min)).toBe('2025-10-09');
     expect(toISO(max)).toBe('2076-10-09');
+  });
+
+  it('addYears no se pasa de mes con el 29 de febrero', () => {
+    expect(toISO(addYears(parseISO('2028-02-29'), 1))).toBe('2029-02-28');
+    expect(toISO(addYears(parseISO('2028-02-29'), 4))).toBe('2032-02-29');
+    expect(toISO(addYears(parseISO('2026-10-09'), 1))).toBe('2027-10-09');
+  });
+
+  it('suggestRenewalDate suma un año al vencimiento si todavía no pasó', () => {
+    expect(suggestRenewalDate('2026-12-15', NOW)).toBe('2027-12-15');
+  });
+
+  it('suggestRenewalDate parte de hoy si ya venció', () => {
+    expect(suggestRenewalDate('2026-10-07', NOW)).toBe('2027-10-09');
+    expect(suggestRenewalDate('2024-01-01', NOW)).toBe('2027-10-09');
   });
 
   it('formatToday arma el encabezado', () => {

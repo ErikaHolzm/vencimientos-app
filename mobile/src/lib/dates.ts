@@ -31,6 +31,24 @@ export function addDays(date: Date, days: number): Date {
   return result;
 }
 
+/** Suma años sin pasarse de mes: el 29 feb 2028 + 1 año es el 28 feb 2029 (y no el 1 mar). */
+export function addYears(date: Date, years: number): Date {
+  const result = new Date(date.getFullYear() + years, date.getMonth(), 1);
+  const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+  result.setDate(Math.min(date.getDate(), lastDay));
+  return result;
+}
+
+/**
+ * Fecha sugerida al renovar algo: un año después de lo que venga más tarde entre
+ * el vencimiento anterior y hoy. La persona la ajusta si su trámite dura distinto.
+ */
+export function suggestRenewalDate(isoDueDate: string, now: Date = new Date()): string {
+  const due = parseISO(isoDueDate);
+  const today = startOfDay(now);
+  return toISO(addYears(due > today ? due : today, 1));
+}
+
 /** Días que faltan para la fecha (negativo si ya pasó, 0 si es hoy). */
 export function daysUntil(isoDate: string, now: Date = new Date()): number {
   return Math.round((parseISO(isoDate).getTime() - startOfDay(now).getTime()) / MS_PER_DAY);

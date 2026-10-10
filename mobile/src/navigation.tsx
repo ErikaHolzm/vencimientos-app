@@ -12,8 +12,8 @@ export type RootStackParamList = {
   Auth: undefined;
   Home: undefined;
   Detail: { id: string };
-  /** Sin id = recordatorio nuevo; con id = edición. */
-  Form: { id?: string } | undefined;
+  /** Sin id = recordatorio nuevo; con id = edición; con id y renew = renovación (nueva fecha). */
+  Form: { id?: string; renew?: boolean } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

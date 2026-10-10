@@ -1,5 +1,7 @@
 # Vencimientos
 
+[![CI](https://github.com/ErikaHolzm/vencimientos-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ErikaHolzm/vencimientos-app/actions/workflows/ci.yml)
+
 App móvil para no olvidarte de lo que vence: la libreta de conducir, el seguro del auto, la cédula, el carné de salud. Cargás un recordatorio con su fecha de vencimiento y la app te avisa con notificaciones antes de que venza.
 
 Proyecto full stack hecho con TypeScript de punta a punta:
@@ -12,6 +14,7 @@ Proyecto full stack hecho con TypeScript de punta a punta:
 
 - Registro e inicio de sesión (cada persona ve solo sus recordatorios).
 - Crear, editar y borrar recordatorios con categoría, fecha y avisos (30, 15, 7, 1 días antes o el mismo día).
+- Renovar un vencimiento: la app propone una nueva fecha (un año más) que se puede ajustar, y los avisos se reprograman solos.
 - Pantalla principal con el próximo vencimiento, un resumen y filtros (urgentes, próximos, más adelante).
 - Estados por colores según cuánto falta: vencido, urgente (≤ 14 días), próximo (≤ 60 días), al día.
 - Notificaciones locales programadas a las 9:00 en el teléfono.
@@ -39,8 +42,7 @@ vencimientos/
 │   │   ├── schemas.ts      validación de entradas con zod
 │   │   └── app.ts          arma la app Express
 │   └── tests/              tests de integración (Jest + Supertest)
-├── mobile-src/             código de la app (App.tsx, src/, __tests__/)
-└── setup-mobile.mjs        genera el proyecto Expo y copia mobile-src dentro
+└── mobile/                 app React Native + Expo (pantallas, estado, notificaciones, tests)
 ```
 
 ## Cómo correrlo
@@ -71,18 +73,18 @@ npm run typecheck           # revisión de tipos
 
 ### 2. App móvil
 
-Desde la raíz del proyecto:
+Con la API del paso anterior corriendo, en otra terminal:
 
 ```bash
-node setup-mobile.mjs       # crea mobile/ con la versión de Expo actual y copia el código
 cd mobile
-cp .env.example .env        # y poné la IP de tu computadora (ver abajo)
+npm install
+cp .env.example .env        # en Windows: copy .env.example .env
 npx expo start
 ```
 
-Escaneá el código QR con la cámara del iPhone para abrirla en Expo Go.
+Abrí `mobile/.env` y poné la IP de tu computadora en la red local (ver abajo). Después escaneá el código QR con la cámara del iPhone para abrirla en **Expo Go** (hay que iniciar sesión con la misma cuenta de Expo en el teléfono y en la computadora con `npx expo login`).
 
-**Importante:** en el teléfono, `localhost` es el propio teléfono. En `mobile/.env` poné la IP de tu computadora en la red WiFi (por ejemplo `EXPO_PUBLIC_API_URL=http://192.168.1.20:4000`). El iPhone y la computadora tienen que estar en la misma red.
+**Importante:** en el teléfono, `localhost` es el propio teléfono. En `mobile/.env` poné la IP de tu computadora (por ejemplo `EXPO_PUBLIC_API_URL=http://192.168.1.20:4000`). El teléfono y la computadora tienen que estar en la misma red. Si tu computadora tiene redes virtuales (Hyper-V, Docker) y el QR no conecta, arrancá Expo indicando la IP correcta, por ejemplo en PowerShell: `$env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.20"; npx expo start`.
 
 Tests de la lógica de la app (fechas, estados y avisos):
 
@@ -135,7 +137,7 @@ Los errores tienen siempre la forma `{ "error": { "message": "...", "details": [
 ## Decisiones técnicas y límites conocidos
 
 - **Repositorios con interfaz**: las rutas dependen de `UserRepo` y `ReminderRepo`, no de MongoDB. Los tests usan una versión en memoria (rápidos, sin base de datos) y producción usa Mongoose.
-- **Notificaciones locales** en lugar de push desde el servidor: funcionan sin conexión y sin cuenta de desarrollador. Se reprograman cada vez que cambia la lista. iOS permite ~64 pendientes, por eso se programan las 60 más próximas. Límite: si creás un recordatorio desde otro dispositivo, este se entera (y programa el aviso) la próxima vez que abrís la app.
+- **Notificaciones locales** en lugar de push desde el servidor: las programa el propio sistema del teléfono, así que no necesitan conexión, ni que el servidor esté encendido, ni cuenta de desarrollador de Apple. Se reprograman cada vez que cambia la lista. iOS permite ~64 pendientes, por eso se programan las 60 más próximas. Límite: si creás un recordatorio desde otro dispositivo, este se entera (y programa el aviso) la próxima vez que abrís la app.
 - **Fechas como texto `AAAA-MM-DD`**: un vencimiento es un día de calendario, no un instante; así se evitan errores de zona horaria.
 - **Un solo token de sesión (7 días)**, sin refresh tokens. Alcanza para este alcance; ver mejoras.
 
@@ -160,5 +162,5 @@ Límite conocido: como el rango se cuenta desde hoy, un recordatorio que lleva m
 - Refresh tokens con rotación y cierre de sesión que revoque el token en el servidor.
 - Notificaciones push desde el servidor (APNs/FCM) para sincronizar varios dispositivos.
 - Modo sin conexión con cola de cambios pendientes.
-- Tests de extremo a extremo de la app (Detox o Maestro) y CI con GitHub Actions.
+- Tests de extremo a extremo de la app (Detox o Maestro).
 - Adjuntar foto del documento y recordar el costo del trámite.

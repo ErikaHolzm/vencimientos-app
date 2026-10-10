@@ -40,21 +40,21 @@ export function DetailScreen({ navigation, route }: Props) {
       return { key: String(n), label: remindLabel(n), date, sent: date < today };
     });
 
-  const finish = async (errorTitle: string) => {
+  const deleteReminder = async () => {
     setBusy(true);
     try {
       await remove(reminder.id);
       navigation.goBack();
     } catch (err) {
       setBusy(false);
-      Alert.alert(errorTitle, err instanceof Error ? err.message : 'Probá de nuevo.');
+      Alert.alert('No se pudo eliminar', err instanceof Error ? err.message : 'Probá de nuevo.');
     }
   };
 
   const confirmDelete = () =>
     Alert.alert('Eliminar recordatorio', 'Esta acción no se puede deshacer.', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => void finish('No se pudo eliminar') },
+      { text: 'Eliminar', style: 'destructive', onPress: () => void deleteReminder() },
     ]);
 
   return (
@@ -111,8 +111,12 @@ export function DetailScreen({ navigation, route }: Props) {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button label="Marcar como renovado" onPress={() => void finish('No se pudo actualizar')} loading={busy} />
-        <Button label="Eliminar recordatorio" variant="danger" onPress={confirmDelete} disabled={busy} />
+        <Button
+          label="Renovar con nueva fecha"
+          onPress={() => navigation.navigate('Form', { id: reminder.id, renew: true })}
+          disabled={busy}
+        />
+        <Button label="Eliminar recordatorio" variant="danger" onPress={confirmDelete} loading={busy} />
       </View>
     </View>
   );

@@ -7,7 +7,7 @@ import { Chip } from '../components/Chip';
 import { DateField } from '../components/DateField';
 import { Field, SectionLabel } from '../components/Field';
 import { CATEGORIES, REMIND_OPTIONS } from '../categories';
-import { addDays, dueDateRange, toISO } from '../lib/dates';
+import { addDays, dueDateRange, suggestRenewalDate, toISO } from '../lib/dates';
 import type { RootStackParamList } from '../navigation';
 import { useReminders } from '../state/RemindersContext';
 import { colors, fonts } from '../theme';
@@ -15,15 +15,22 @@ import type { Category } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Form'>;
 
-/** Sirve para crear (sin id) y para editar (con id). */
+/** Sirve para crear (sin id), editar (con id) y renovar (con id y renew: propone una nueva fecha). */
 export function FormScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { reminders, create, update } = useReminders();
   const editing = route.params?.id ? reminders.find((r) => r.id === route.params?.id) : undefined;
+  const renewing = Boolean(editing && route.params?.renew);
 
   const [title, setTitle] = useState(editing?.title ?? '');
   const [category, setCategory] = useState<Category>(editing?.category ?? 'licencia');
-  const [dueDate, setDueDate] = useState(editing?.dueDate ?? toISO(addDays(new Date(), 30)));
+  const [dueDate, setDueDate] = useState(
+    editing
+      ? renewing
+        ? suggestRenewalDate(editing.dueDate)
+        : editing.dueDate
+      : toISO(addDays(new Date(), 30)),
+  );
   const [remind, setRemind] = useState<number[]>(editing?.remindDaysBefore ?? [15, 7, 1]);
   const [busy, setBusy] = useState(false);
 
@@ -40,7 +47,9 @@ export function FormScreen({ navigation, route }: Props) {
     try {
       if (editing) await update(editing.id, input);
       else await create(input);
-      navigation.goBack();
+      // Al renovar se vuelve a la lista (el detalle viejo ya no es lo que se quiere ver).
+      if (renewing) navigation.popToTop();
+      else navigation.goBack();
     } catch (err) {
       setBusy(false);
       Alert.alert('No se pudo guardar', err instanceof Error ? err.message : 'Probá de nuevo.');
@@ -53,7 +62,9 @@ export function FormScreen({ navigation, route }: Props) {
         <Pressable onPress={() => navigation.goBack()} accessibilityRole="button" style={styles.cancel}>
           <Text style={styles.cancelText}>Cancelar</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>{editing ? 'Editar recordatorio' : 'Nuevo recordatorio'}</Text>
+        <Text style={styles.headerTitle}>
+          {renewing ? 'Renovar recordatorio' : editing ? 'Editar recordatorio' : 'Nuevo recordatorio'}
+        </Text>
         <View style={{ width: 92 }} />
       </View>
 
@@ -83,7 +94,7 @@ export function FormScreen({ navigation, route }: Props) {
         </View>
 
         <DateField
-          label="Fecha de vencimiento"
+          label={renewing ? 'Nueva fecha de vencimiento' : 'Fecha de vencimiento'}
           value={dueDate}
           onChange={setDueDate}
           minimumDate={range.min}
@@ -103,7 +114,7 @@ export function FormScreen({ navigation, route }: Props) {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
         <Button
-          label={editing ? 'Guardar cambios' : 'Guardar recordatorio'}
+          label={renewing ? 'Guardar renovación' : editing ? 'Guardar cambios' : 'Guardar recordatorio'}
           onPress={() => void save()}
           disabled={!canSave}
           loading={busy}
