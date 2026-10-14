@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
@@ -19,7 +19,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
-  const { reminders, loading, error, refresh } = useReminders();
+  const { reminders, loading, error, notificationsBlocked, refresh } = useReminders();
   const [filter, setFilter] = useState<Filter>('all');
 
   const visible = useMemo(
@@ -68,6 +68,19 @@ export function HomeScreen({ navigation }: Props) {
           <View style={styles.message}>
             <Text style={styles.messageText}>{error}</Text>
             <Button label="Reintentar" variant="ghost" onPress={() => void refresh()} />
+          </View>
+        ) : null}
+
+        {notificationsBlocked ? (
+          <View style={styles.banner}>
+            <Feather name="bell-off" size={20} color={BANNER_INK} />
+            <View style={styles.bannerBody}>
+              <Text style={styles.bannerTitle}>Notificaciones desactivadas</Text>
+              <Text style={styles.bannerText}>Sin el permiso no podemos avisarte antes de que algo venza.</Text>
+              <Pressable onPress={() => void Linking.openSettings()} accessibilityRole="button" hitSlop={8}>
+                <Text style={styles.bannerAction}>Abrir Ajustes</Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
 
@@ -122,6 +135,9 @@ export function HomeScreen({ navigation }: Props) {
   );
 }
 
+/** Color del texto y el icono del cartel de permiso (el mismo naranja oscuro del estado "urgente"). */
+const BANNER_INK = '#9A3412';
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground },
   content: { paddingHorizontal: 20, gap: 22 },
@@ -138,6 +154,26 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 16,
+    borderRadius: radius.lg,
+    backgroundColor: '#FFEDD5',
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+  },
+  bannerBody: { flex: 1, gap: 4 },
+  bannerTitle: { fontFamily: fonts.bold, fontSize: 15, color: BANNER_INK },
+  bannerText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: BANNER_INK },
+  bannerAction: {
+    fontFamily: fonts.bold,
+    fontSize: 14,
+    color: BANNER_INK,
+    textDecorationLine: 'underline',
+    marginTop: 4,
   },
   filters: { gap: 8, paddingRight: 20 },
   list: { gap: 12 },

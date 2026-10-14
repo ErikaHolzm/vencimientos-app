@@ -5,8 +5,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { categoryInfo, remindLabel } from '../categories';
-import { addDays, daysUntil, formatDate, parseISO, startOfDay, toISO } from '../lib/dates';
+import { addDays, daysUntil, formatDate, parseISO, toISO } from '../lib/dates';
 import { confirmDestructive, showMessage } from '../lib/dialogs';
+import { NOTIFY_HOUR } from '../lib/notificationPlan';
 import { dueText, getStatus } from '../lib/status';
 import type { RootStackParamList } from '../navigation';
 import { useReminders } from '../state/RemindersContext';
@@ -16,7 +17,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
 export function DetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const { reminders, remove } = useReminders();
+  const { reminders, remove, notificationsBlocked } = useReminders();
   const [busy, setBusy] = useState(false);
   const reminder = reminders.find((r) => r.id === route.params.id);
 
@@ -32,13 +33,17 @@ export function DetailScreen({ navigation, route }: Props) {
   const days = daysUntil(reminder.dueDate);
   const status = getStatus(days);
   const category = categoryInfo(reminder.category);
-  const today = startOfDay(new Date());
+  const now = new Date();
   const due = parseISO(reminder.dueDate);
   const notices = [...reminder.remindDaysBefore]
     .sort((a, b) => b - a)
     .map((n) => {
       const date = addDays(due, -n);
-      return { key: String(n), label: remindLabel(n), date, sent: date < today };
+      // El aviso llega a las NOTIFY_HOUR de ese día: antes de esa hora todavía está pendiente.
+      const arrival = new Date(date.getFullYear(), date.getMonth(), date.getDate(), NOTIFY_HOUR);
+      const sent = arrival.getTime() <= now.getTime();
+      // Pendiente pero sin permiso del teléfono: no se va a recibir.
+      return { key: String(n), label: remindLabel(n), date, sent, blocked: !sent && notificationsBlocked };
     });
 
   const deleteReminder = async () => {
@@ -93,14 +98,16 @@ export function DetailScreen({ navigation, route }: Props) {
             ) : (
               notices.map((n, index) => (
                 <View key={n.key} style={[styles.noticeRow, index > 0 && styles.noticeDivider]}>
-                  <View style={[styles.dot, { backgroundColor: n.sent ? '#98A2B3' : colors.primary }]} />
+                  <View style={[styles.dot, { backgroundColor: n.sent || n.blocked ? '#98A2B3' : colors.primary }]} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.noticeLabel}>{n.label}</Text>
                     <Text style={styles.noticeDate}>{formatDate(toISO(n.date))}</Text>
                   </View>
-                  <View style={[styles.pill, { backgroundColor: n.sent ? '#EEF0F3' : colors.primarySoft }]}>
-                    <Text style={[styles.pillText, { color: n.sent ? '#475467' : colors.primary }]}>
-                      {n.sent ? 'Enviado' : 'Programado'}
+                  <View
+                    style={[styles.pill, { backgroundColor: n.sent || n.blocked ? '#EEF0F3' : colors.primarySoft }]}
+                  >
+                    <Text style={[styles.pillText, { color: n.sent || n.blocked ? '#475467' : colors.primary }]}>
+                      {n.sent ? 'Enviado' : n.blocked ? 'Sin permiso' : 'Programado'}
                     </Text>
                   </View>
                 </View>

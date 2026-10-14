@@ -18,6 +18,25 @@ if (SUPPORTED) {
   });
 }
 
+/** Qué pasó al sincronizar: ok, la persona no dio permiso, o la plataforma no soporta avisos (web). */
+export type SyncResult = 'ok' | 'denied' | 'unsupported';
+
+/**
+ * Cola de operaciones: cada una espera a que termine la anterior, así nunca se pisan
+ * (por ejemplo, dos sincronizaciones seguidas dejando avisos duplicados).
+ */
+let queue: Promise<void> = Promise.resolve();
+
+function enqueue<T>(task: () => Promise<T>): Promise<T> {
+  const result = queue.then(task);
+  // La cola sigue andando aunque una tarea falle; el error igual le llega a quien la pidió.
+  queue = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
 async function ensurePermission(): Promise<boolean> {
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
@@ -30,20 +49,28 @@ async function ensurePermission(): Promise<boolean> {
  * Deja programadas exactamente las notificaciones que corresponden a la lista actual.
  * Es la forma más simple de mantenerlo consistente: borra todo y vuelve a programar.
  */
-export async function syncNotifications(reminders: Reminder[]): Promise<void> {
-  if (!SUPPORTED) return;
-  if (!(await ensurePermission())) return;
+export function syncNotifications(reminders: Reminder[]): Promise<SyncResult> {
+  return enqueue<SyncResult>(async () => {
+    if (!SUPPORTED) return 'unsupported';
 
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  for (const item of planNotifications(reminders)) {
-    await Notifications.scheduleNotificationAsync({
-      content: { title: item.title, body: item.body, data: { reminderId: item.reminderId } },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: item.date },
-    });
-  }
+    const plan = planNotifications(reminders);
+    // Solo se pide permiso si hay algo para avisar: no tiene sentido molestar a quien todavía no cargó nada.
+    if (plan.length > 0 && !(await ensurePermission())) return 'denied';
+
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    for (const item of plan) {
+      await Notifications.scheduleNotificationAsync({
+        content: { title: item.title, body: item.body, data: { reminderId: item.reminderId } },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: item.date },
+      });
+    }
+    return 'ok';
+  });
 }
 
-export async function clearNotifications(): Promise<void> {
-  if (!SUPPORTED) return;
-  await Notifications.cancelAllScheduledNotificationsAsync();
+export function clearNotifications(): Promise<void> {
+  return enqueue(async () => {
+    if (!SUPPORTED) return;
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  });
 }

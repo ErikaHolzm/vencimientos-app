@@ -10,6 +10,8 @@ interface RemindersValue {
   loading: boolean;
   /** Mensaje de error de la última carga (null si salió bien). */
   error: string | null;
+  /** true si hay avisos para programar pero el teléfono no dio permiso de notificaciones. */
+  notificationsBlocked: boolean;
   refresh: () => Promise<void>;
   create: (input: ReminderInput) => Promise<void>;
   update: (id: string, input: ReminderInput) => Promise<void>;
@@ -23,6 +25,9 @@ export function RemindersProvider({ children }: { children: ReactNode }) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Pasa a true cuando la lista se cargó bien al menos una vez. Hasta entonces no se tocan los avisos del teléfono. */
+  const [loaded, setLoaded] = useState(false);
+  const [notificationsBlocked, setNotificationsBlocked] = useState(false);
 
   /** Si el servidor dice 401 (token vencido), se cierra la sesión. */
   const handleAuthError = useCallback(
@@ -37,6 +42,7 @@ export function RemindersProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       setReminders(await remindersApi.list(token));
+      setLoaded(true);
       setError(null);
     } catch (err) {
       handleAuthError(err);
@@ -49,14 +55,21 @@ export function RemindersProvider({ children }: { children: ReactNode }) {
   // Al iniciar sesión se cargan; al cerrarla se vacía la lista.
   useEffect(() => {
     if (token) void refresh();
-    else setReminders([]);
+    else {
+      setReminders([]);
+      setLoaded(false);
+      setNotificationsBlocked(false);
+    }
   }, [token, refresh]);
 
-  // Cada vez que cambia la lista se reprograman los avisos del teléfono.
+  // Cada vez que cambia la lista se reprograman los avisos del teléfono,
+  // pero solo después de haberla cargado bien: si la carga falla, no se borran los avisos que ya había.
   useEffect(() => {
-    if (!token) return;
-    syncNotifications(reminders).catch(() => undefined);
-  }, [token, reminders]);
+    if (!token || !loaded) return;
+    syncNotifications(reminders)
+      .then((result) => setNotificationsBlocked(result === 'denied'))
+      .catch(() => undefined);
+  }, [token, loaded, reminders]);
 
   /** Las operaciones relanzan el error para que la pantalla muestre el mensaje. */
   const guarded = useCallback(
@@ -97,8 +110,8 @@ export function RemindersProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ reminders, loading, error, refresh, create, update, remove }),
-    [reminders, loading, error, refresh, create, update, remove],
+    () => ({ reminders, loading, error, notificationsBlocked, refresh, create, update, remove }),
+    [reminders, loading, error, notificationsBlocked, refresh, create, update, remove],
   );
   return <RemindersContext.Provider value={value}>{children}</RemindersContext.Provider>;
 }
