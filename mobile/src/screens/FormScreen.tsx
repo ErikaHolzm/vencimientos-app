@@ -7,7 +7,7 @@ import { Chip } from '../components/Chip';
 import { DateField } from '../components/DateField';
 import { Field, SectionLabel } from '../components/Field';
 import { CATEGORIES, REMIND_OPTIONS, remindLabel } from '../categories';
-import { addDays, dueDateRange, suggestRenewalDate, toISO } from '../lib/dates';
+import { dueDateRange, suggestRenewalDate, toISO } from '../lib/dates';
 import { showMessage } from '../lib/dialogs';
 import { pastNotices } from '../lib/notificationPlan';
 import type { RootStackParamList } from '../navigation';
@@ -31,7 +31,7 @@ export function FormScreen({ navigation, route }: Props) {
       ? renewing
         ? suggestRenewalDate(editing.dueDate)
         : editing.dueDate
-      : toISO(addDays(new Date(), 30)),
+      : toISO(new Date()),
   );
   const [remind, setRemind] = useState<number[]>(editing?.remindDaysBefore ?? [15, 7, 1]);
   const [busy, setBusy] = useState(false);

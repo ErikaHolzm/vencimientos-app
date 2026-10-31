@@ -7,7 +7,7 @@ import { Button } from '../components/Button';
 import { categoryInfo, remindLabel } from '../categories';
 import { addDays, daysUntil, formatDate, parseISO, toISO } from '../lib/dates';
 import { confirmDestructive, showMessage } from '../lib/dialogs';
-import { NOTIFY_HOUR } from '../lib/notificationPlan';
+import { noticeDate } from '../lib/notificationPlan';
 import { dueText, getStatus } from '../lib/status';
 import type { RootStackParamList } from '../navigation';
 import { useReminders } from '../state/RemindersContext';
@@ -39,9 +39,8 @@ export function DetailScreen({ navigation, route }: Props) {
     .sort((a, b) => b - a)
     .map((n) => {
       const date = addDays(due, -n);
-      // El aviso llega a las NOTIFY_HOUR de ese día: antes de esa hora todavía está pendiente.
-      const arrival = new Date(date.getFullYear(), date.getMonth(), date.getDate(), NOTIFY_HOUR);
-      const sent = arrival.getTime() <= now.getTime();
+      // Misma cuenta que usa la app para programar el aviso: antes de su hora todavía está pendiente.
+      const sent = noticeDate(due, n).getTime() <= now.getTime();
       // Pendiente pero sin permiso del teléfono: no se va a recibir.
       return { key: String(n), label: remindLabel(n), date, sent, blocked: !sent && notificationsBlocked };
     });
