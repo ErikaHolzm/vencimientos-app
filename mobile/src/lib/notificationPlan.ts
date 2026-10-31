@@ -19,6 +19,12 @@ function bodyFor(daysBefore: number, dueDate: string): string {
   return `Vence en ${daysBefore} días (${formatDate(dueDate)}).`;
 }
 
+/** Momento exacto en que llega el aviso de "daysBefore días antes" de un vencimiento: ese día, a las NOTIFY_HOUR. */
+export function noticeDate(due: Date, daysBefore: number): Date {
+  const day = addDays(due, -daysBefore);
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(), NOTIFY_HOUR, 0, 0);
+}
+
 /**
  * Decide QUÉ notificaciones programar. Es una función pura (no toca el sistema),
  * por eso se puede testear fácil. Ignora avisos que ya pasaron y se queda con los más cercanos.
@@ -29,8 +35,7 @@ export function planNotifications(reminders: Reminder[], now: Date = new Date())
   for (const reminder of reminders) {
     const due = parseISO(reminder.dueDate);
     for (const daysBefore of reminder.remindDaysBefore) {
-      const day = addDays(due, -daysBefore);
-      const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), NOTIFY_HOUR, 0, 0);
+      const date = noticeDate(due, daysBefore);
       if (date.getTime() <= now.getTime()) continue;
       planned.push({
         reminderId: reminder.id,
@@ -42,4 +47,13 @@ export function planNotifications(reminders: Reminder[], now: Date = new Date())
   }
 
   return planned.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, MAX_SCHEDULED);
+}
+
+/**
+ * De los avisos elegidos para un vencimiento, cuáles ya no se van a enviar porque su hora ya pasó.
+ * Sirve para avisarle a la persona en el formulario, antes de guardar.
+ */
+export function pastNotices(dueDate: string, remindDaysBefore: number[], now: Date = new Date()): number[] {
+  const due = parseISO(dueDate);
+  return remindDaysBefore.filter((daysBefore) => noticeDate(due, daysBefore).getTime() <= now.getTime());
 }

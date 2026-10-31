@@ -1,5 +1,5 @@
 import { addDays, toISO } from '../src/lib/dates';
-import { MAX_SCHEDULED, planNotifications } from '../src/lib/notificationPlan';
+import { MAX_SCHEDULED, pastNotices, planNotifications } from '../src/lib/notificationPlan';
 import type { Reminder } from '../src/types';
 
 const NOW = new Date(2026, 9, 9, 19, 32); // 9 oct 2026, 19:32
@@ -60,5 +60,29 @@ describe('planNotifications', () => {
 
     expect(plan).toHaveLength(MAX_SCHEDULED);
     expect(plan[0]?.reminderId).toBe('r0');
+  });
+});
+
+describe('pastNotices', () => {
+  it('marca los avisos cuya hora ya pasó y deja los que todavía van a llegar', () => {
+    // 9 oct, 19:32: el aviso de "7 días antes" de un vencimiento el 16 era hoy a las 9:00.
+    expect(pastNotices('2026-10-16', [7, 1, 0], NOW)).toEqual([7]);
+  });
+
+  it('si vence hoy y ya pasaron las 9:00, el aviso del mismo día no se va a enviar', () => {
+    expect(pastNotices('2026-10-09', [0], NOW)).toEqual([0]);
+  });
+
+  it('si vence hoy pero todavía no son las 9:00, el aviso del mismo día sí llega', () => {
+    const earlyMorning = new Date(2026, 9, 9, 8, 0);
+    expect(pastNotices('2026-10-09', [0], earlyMorning)).toEqual([]);
+  });
+
+  it('devuelve una lista vacía si ningún aviso pasó', () => {
+    expect(pastNotices('2026-12-01', [30, 7, 1, 0], NOW)).toEqual([]);
+  });
+
+  it('marca todos si el vencimiento ya pasó', () => {
+    expect(pastNotices('2026-10-01', [7, 1, 0], NOW)).toEqual([7, 1, 0]);
   });
 });

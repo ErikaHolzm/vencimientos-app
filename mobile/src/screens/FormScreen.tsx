@@ -6,9 +6,10 @@ import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
 import { DateField } from '../components/DateField';
 import { Field, SectionLabel } from '../components/Field';
-import { CATEGORIES, REMIND_OPTIONS } from '../categories';
+import { CATEGORIES, REMIND_OPTIONS, remindLabel } from '../categories';
 import { addDays, dueDateRange, suggestRenewalDate, toISO } from '../lib/dates';
 import { showMessage } from '../lib/dialogs';
+import { pastNotices } from '../lib/notificationPlan';
 import type { RootStackParamList } from '../navigation';
 import { useReminders } from '../state/RemindersContext';
 import { colors, fonts } from '../theme';
@@ -37,6 +38,14 @@ export function FormScreen({ navigation, route }: Props) {
 
   const canSave = title.trim().length > 0;
   const range = dueDateRange();
+  // Avisos elegidos cuya hora ya pasó: si se guarda así, esos no llegan.
+  const missed = pastNotices(dueDate, remind);
+  const missedMessage =
+    missed.length === 0
+      ? null
+      : `${missed.length === 1 ? 'Este aviso ya pasó y no se va a enviar' : 'Estos avisos ya pasaron y no se van a enviar'}: ${missed
+          .map((days) => remindLabel(days))
+          .join(', ')}.`;
 
   const toggleRemind = (days: number) =>
     setRemind((current) => (current.includes(days) ? current.filter((d) => d !== days) : [...current, days]));
@@ -110,6 +119,7 @@ export function FormScreen({ navigation, route }: Props) {
             ))}
           </View>
           <Text style={styles.help}>Vas a recibir una notificación a las 9:00 en cada momento seleccionado.</Text>
+          {missedMessage ? <Text style={styles.warning}>{missedMessage}</Text> : null}
         </View>
       </ScrollView>
 
@@ -142,6 +152,7 @@ const styles = StyleSheet.create({
   group: { gap: 10 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   help: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.muted },
+  warning: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 19, color: '#9A3412' },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 14,
