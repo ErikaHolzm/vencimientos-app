@@ -17,8 +17,9 @@ interface Props {
 export function DateField({ label, value, onChange, minimumDate, maximumDate }: Props) {
   const date = parseISO(value);
 
-  const handle = (_event: unknown, selected?: Date) => {
-    if (selected) onChange(toISO(selected));
+  // Se llama solo cuando la persona elige una fecha. Si cierra el calendario sin elegir, no pasa nada.
+  const handle = (_event: unknown, selected: Date) => {
+    onChange(toISO(selected));
   };
 
   return (
@@ -31,7 +32,7 @@ export function DateField({ label, value, onChange, minimumDate, maximumDate }: 
             value={date}
             mode="date"
             display="compact"
-            onChange={handle}
+            onValueChange={handle}
             minimumDate={minimumDate}
             maximumDate={maximumDate}
           />
@@ -40,7 +41,7 @@ export function DateField({ label, value, onChange, minimumDate, maximumDate }: 
             accessibilityRole="button"
             accessibilityLabel={`Cambiar ${label}`}
             onPress={() =>
-              DateTimePickerAndroid.open({ value: date, mode: 'date', onChange: handle, minimumDate, maximumDate })
+              DateTimePickerAndroid.open({ value: date, mode: 'date', onValueChange: handle, minimumDate, maximumDate })
             }
           >
             <Text style={styles.change}>Cambiar</Text>
