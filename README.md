@@ -2,7 +2,18 @@
 
 [![CI](https://github.com/ErikaHolzm/vencimientos-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ErikaHolzm/vencimientos-app/actions/workflows/ci.yml)
 
+**[Mi portfolio](https://portfolio-orpin-tau-qbnxwhe0y3.vercel.app)** · **[Demo en línea](https://vencimientos-demo.vercel.app)**
+
+Para probar la demo, creá una cuenta con cualquier email (el registro está abierto). Las notificaciones solo existen en la app del teléfono, no en la versión web.
+
 App móvil para no olvidarte de lo que vence: la libreta de conducir, el seguro del auto, la cédula, el carné de salud. Cargás un recordatorio con su fecha de vencimiento y la app te avisa con notificaciones antes de que venza.
+
+<p align="center">
+  <img src="docs/capturas/inicio.jpg" width="23%" alt="Pantalla principal con el próximo vencimiento y la lista" />
+  <img src="docs/capturas/detalle-proximo.jpg" width="23%" alt="Detalle de un vencimiento próximo con sus avisos programados" />
+  <img src="docs/capturas/detalle-vencido.jpg" width="23%" alt="Detalle de un vencimiento vencido con sus avisos enviados" />
+  <img src="docs/capturas/formulario.jpg" width="23%" alt="Formulario para crear un recordatorio" />
+</p>
 
 Proyecto full stack hecho con TypeScript de punta a punta:
 
@@ -18,7 +29,9 @@ Proyecto full stack hecho con TypeScript de punta a punta:
 - Renovar un vencimiento: la app propone una nueva fecha (un año más) que se puede ajustar, y los avisos se reprograman solos.
 - Pantalla principal con el próximo vencimiento, un resumen y filtros (urgentes, próximos, más adelante).
 - Estados por colores según cuánto falta: vencido, urgente (≤ 14 días), próximo (≤ 60 días), al día.
-- Notificaciones locales programadas a las 9:00 en el teléfono.
+- Notificaciones locales programadas a las 9:00 en el teléfono. Al tocar una, se abre el detalle de ese recordatorio.
+- Si el teléfono no dio permiso de notificaciones, la pantalla principal lo avisa (con un botón a los Ajustes) y el detalle marca los avisos como «Sin permiso».
+- El formulario avisa cuando un aviso elegido ya pasó y no se va a enviar (por ejemplo, «30 días antes» de algo que vence en 20 días).
 
 ## Arquitectura
 
@@ -104,7 +117,7 @@ La app también corre en el navegador (Expo para web) y la API se publica como f
 | API | `server` | Vercel detecta `server/server.ts` (Express) sin configuración | `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGINS` (la URL de la web), `TRUST_PROXY=1` |
 | Web | `mobile` | `mobile/vercel.json` (`npx expo export -p web`, salida en `dist`) | `EXPO_PUBLIC_API_URL` (la URL de la API) |
 
-Para probarla localmente en el navegador: `cd mobile`, `npx expo install react-dom react-native-web @expo/metro-runtime` (una sola vez) y `npx expo start --web`.
+Para probarla localmente en el navegador: `cd mobile`, `npx expo install react-dom react-native-web @expo/metro-runtime` (una sola vez) y `npx expo start --web`. Para poder iniciar sesión desde la web local, `mobile/.env` tiene que apuntar a tu API local (por ejemplo `http://TU-IP:4000`) y `server/.env` tiene que incluir `CORS_ORIGINS=http://localhost:8081` (el puerto que muestre el navegador): la API de Vercel solo acepta la web de la demo.
 
 Diferencias de la versión web respecto al teléfono:
 
@@ -167,6 +180,8 @@ Los errores tienen siempre la forma `{ "error": { "message": "...", "details": [
 
 - **Repositorios con interfaz**: las rutas dependen de `UserRepo` y `ReminderRepo`, no de MongoDB. Los tests de la API usan una versión en memoria (rápidos) y producción usa Mongoose. Para que esa réplica sea confiable, hay tests de contrato que corren las mismas pruebas contra las dos versiones, la segunda sobre un MongoDB real temporal (`mongodb-memory-server`): índice único de email, aislamiento entre usuarios, ids inválidos e intentos de inyección de operadores.
 - **Notificaciones locales** en lugar de push desde el servidor: las programa el propio sistema del teléfono, así que no necesitan conexión, ni que el servidor esté encendido, ni cuenta de desarrollador de Apple. Se reprograman cada vez que cambia la lista. iOS permite ~64 pendientes, por eso se programan las 60 más próximas. Límite: si creás un recordatorio desde otro dispositivo, este se entera (y programa el aviso) la próxima vez que abrís la app.
+- **Avisos protegidos de dos problemas**: no se reprograman hasta que la lista se cargó bien al menos una vez (así una caída de red no borra los avisos que ya estaban programados) y las sincronizaciones se ponen en cola, de a una, para que no se pisen ni dejen avisos duplicados.
+- **Expo Go**: con la app cerrada del todo, tocar un aviso abre Expo Go y no la app (es un límite de Expo Go); en una app instalada debería abrirse directo.
 - **Fechas como texto `AAAA-MM-DD`**: un vencimiento es un día de calendario, no un instante; así se evitan errores de zona horaria.
 - **Un solo token de sesión (7 días)**, sin refresh tokens. La revocación se resuelve con la versión de token (un dato más en el usuario y una lectura por pedido); a cambio no hace falta una lista de tokens revocados.
 
@@ -183,6 +198,15 @@ Además de los tests automáticos, se probaron a mano casos límite desde la app
 | Pedir, editar o borrar el recordatorio de otro usuario | 404, sin revelar si existe | Cubierto por test |
 | Token vencido, firmado con otro secreto o sin firma (`alg: none`) | 401 | Cubierto por test |
 | Más de 20 intentos de login seguidos | 429 | Cubierto por test |
+| Aviso a la hora programada con la app cerrada (iPhone, Expo Go, con hora de prueba) | Llegó a la hora configurada | Funciona |
+| Tocar una notificación con Expo Go cerrado | Se abre la lista de proyectos de Expo Go y no la app; al abrir el proyecto aparece el detalle del recordatorio | Límite conocido de Expo Go; en una app instalada debería abrir directo (sin probar) |
+| Elegir un aviso cuya hora ya pasó (vencimiento el 1 de diciembre con aviso «30 días antes», probado el 1 de noviembre después de las 9:00) | El aviso no se programaba, pero el formulario prometía una notificación en cada momento elegido | Corregido: el formulario muestra «Este aviso ya pasó y no se va a enviar». Cubierto por tests de borde (antes y después de las 9:00) |
+| Abrir el formulario de un recordatorio nuevo | La fecha por defecto (hoy + 30 días) hizo crear por error un recordatorio con vencimiento un mes después al probar avisos del mismo día | Corregido: el formulario arranca con la fecha de hoy |
+| Probar la web local contra la API de producción | El navegador bloqueó el login (CORS): la API de Vercel solo acepta la web de la demo | Comportamiento esperado, no un error. Para probar en local se usa la API local (ver «Demo en línea») |
+| Abrir la app sin conexión teniendo avisos ya programados *(revisión de código)* | Se sincronizaba con la lista vacía y se cancelaban todos los avisos del teléfono | Corregido: los avisos solo se reprograman después de cargar la lista bien al menos una vez |
+| Crear y editar recordatorios muy seguidos *(revisión de código)* | Dos sincronizaciones podían mezclarse y dejar avisos duplicados | Corregido: las sincronizaciones van en cola, de a una. Falta un test automático de la cola |
+
+Las filas marcadas con *(revisión de código)* se detectaron leyendo el código y analizando el orden de las operaciones, no reproduciéndolas en el teléfono.
 
 Límite conocido: como el rango se cuenta desde hoy, un recordatorio que lleva más de un año vencido ya no se puede editar sin cambiar su fecha (se puede borrar o marcar como renovado).
 
