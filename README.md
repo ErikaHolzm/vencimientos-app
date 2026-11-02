@@ -208,6 +208,8 @@ Además de los tests automáticos, se probaron a mano casos límite desde la app
 
 Las filas marcadas con *(revisión de código)* se detectaron leyendo el código y analizando el orden de las operaciones, no reproduciéndolas en el teléfono.
 
+La lista completa, con pasos y resultado esperado de cada caso, está en [docs/casos-de-prueba.md](docs/casos-de-prueba.md).
+
 Límite conocido: como el rango se cuenta desde hoy, un recordatorio que lleva más de un año vencido ya no se puede editar sin cambiar su fecha (se puede borrar o marcar como renovado).
 
 ## Qué mejoraría después
