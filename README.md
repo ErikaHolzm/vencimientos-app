@@ -15,6 +15,10 @@ App móvil para no olvidarte de lo que vence: la libreta de conducir, el seguro 
   <img src="docs/capturas/formulario.jpg" width="23%" alt="Formulario para crear un recordatorio" />
 </p>
 
+<p align="center">
+  <img src="docs/capturas/notificacion.jpg" width="60%" alt="Notificación de la app en el teléfono: Renovar libreta del auto, vence hoy" />
+</p>
+
 Proyecto full stack hecho con TypeScript de punta a punta:
 
 - **App móvil** — React Native + Expo (iPhone y Android)
